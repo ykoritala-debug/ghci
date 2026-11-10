@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SheCab – Assisted Mobility & Safety Platform</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{--bg:#05002e;--card:#0c0845;--line:#2a2570;--ink:#fff;--mute:#a9a6d6;--accent:#4640ee;--blue:#0a2cff;--danger:#e11d48;--gold:#ffc83d}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{background:#020018;color:var(--ink);font-family:"Inter","Segoe UI",system-ui,sans-serif;display:flex;justify-content:center;align-items:center}
+#phone{width:100%;max-width:400px;height:100%;max-height:780px;background:var(--bg);position:relative;overflow:hidden;display:flex;flex-direction:column}
+@media(min-width:440px){#phone{border-radius:36px;border:2px solid var(--line)}}
+.screen{display:none;flex:1;flex-direction:column;padding:28px 22px;overflow-y:auto}
+.screen.on{display:flex}
+h1{font-size:30px;line-height:1.2}h2{font-size:22px;margin-bottom:18px}
+.mute{color:var(--mute);font-size:14px}
+button{font:inherit;color:inherit;cursor:pointer;border:0}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.btn{background:var(--accent);padding:15px;border-radius:16px;font-weight:600;width:100%;font-size:16px;margin-top:12px}
+.btn.alt{background:transparent;border:1px solid var(--line)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.opt{display:flex;justify-content:space-between;align-items:center;background:var(--card);border:2px solid transparent;border-radius:16px;padding:14px 16px;margin-bottom:10px;width:100%;text-align:left}
+.opt small{display:block;color:var(--mute);margin-top:3px}
+.opt.sel{background:var(--blue);border-color:#6f86ff}
+.opt.sel small{color:#dbe2ff}
+.center{align-items:center;justify-content:center;text-align:center;gap:14px}
+.logo{width:120px;height:140px}
+.bubble{background:var(--blue);padding:16px;border-radius:18px;margin-top:16px;font-weight:600;text-align:center}
+.radio{display:flex;align-items:center;gap:14px;padding:14px 4px;font-size:18px;cursor:pointer}
+.radio input{width:22px;height:22px;accent-color:var(--accent)}
+input[type=text],textarea{width:100%;background:var(--card);border:1px solid var(--line);color:#fff;border-radius:12px;padding:13px;font:inherit;margin-top:10px}
+input[type=range]{width:100%;accent-color:var(--blue)}
+.avatar{width:96px;height:96px;border-radius:50%;display:grid;place-items:center;font-size:34px;font-weight:700;border:3px solid var(--accent);background:#1a1580;margin:0 auto 10px}
+.row{display:flex;justify-content:space-between;background:var(--card);border-radius:12px;padding:14px;margin-top:8px}
+#map{height:250px;border-radius:18px;margin:12px 0;background:#10104a}
+.stars button{background:none;font-size:34px;color:#555}
+.stars button.on{color:var(--gold)}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.chip{background:var(--card);padding:10px 16px;border-radius:12px;border:1px solid var(--line)}
+.chip.on{background:var(--accent)}
+.actions{display:flex;gap:8px}
+.actions button{flex:1;padding:14px;border-radius:14px;background:var(--card);font-weight:600}
+.actions .sos{background:#5c0a2a;flex:.4;font-size:20px}
+#toast{position:absolute;left:16px;right:16px;bottom:16px;background:#1a1580;border:1px solid var(--accent);padding:14px;border-radius:14px;display:none;z-index:2000;text-align:center}
+</style>
+</head>
+<body>
+<main id="phone">
+
+<!-- 1. Welcome -->
+<section class="screen center on" id="welcome">
+  <h1>Welcome to SheCab</h1>
+  <svg class="logo" viewBox="0 0 100 120" fill="none" stroke="#fff" stroke-width="6" stroke-linejoin="round" aria-hidden="true">
+    <path d="M50 112C20 90 8 70 8 45 8 25 22 8 40 8h20c18 0 32 17 32 37 0 25-12 45-42 67z"/>
+    <path d="M30 62V50c0-8 6-14 14-14h12c8 0 14 6 14 14v12"/><rect x="26" y="58" width="48" height="22" rx="5"/>
+  </svg>
+  <p class="mute">Safe rides and trusted helpers, with the gender preference you choose.</p>
+  <button class="btn" onclick="show('services')">Get started</button>
+  <button class="btn alt" onclick="show('services')">Sign in</button>
+</section>
+
+<!-- 2. Service type -->
+<section class="screen" id="services">
+  <h2>What do you need?</h2>
+  <button class="opt" data-svc="premium"><span>Ride Premium<small>Sedan, AC guaranteed</small></span><b>₹299</b></button>
+  <button class="opt" data-svc="porter"><span>Porter<small>Luggage and physical help</small></span><b>₹99</b></button>
+  <button class="opt" data-svc="ride"><span>Ride<small>Hatchback, standard</small></span><b>₹149</b></button>
+  <button class="opt" data-svc="ondemand"><span>On-Demand<small>Fast, flexible, short tasks</small></span><b>₹5/min</b></button>
+  <button class="btn" id="svcNext" disabled onclick="show('gender')">Continue</button>
+</section>
+
+<!-- 3. Gender preference -->
+<section class="screen" id="gender">
+  <h2>Choose helper gender</h2>
+  <label class="radio"><input type="radio" name="g" value="Female"> Female</label>
+  <label class="radio"><input type="radio" name="g" value="Male"> Male</label>
+  <label class="radio"><input type="radio" name="g" value="Any"> No preference</label>
+  <div class="bubble" id="prediction" aria-live="polite">Select a preference to see availability.</div>
+  <button class="btn" id="gNext" disabled onclick="show('booking')">Continue</button>
+</section>
+
+<!-- 4. Booking details -->
+<section class="screen" id="booking">
+  <h2>Booking details</h2>
+  <div class="opt sel"><span id="bkName">Ride</span><b id="bkFare">₹0</b></div>
+  <div id="timeBox" style="display:none">
+    <label class="mute" for="hrs">Duration: <b id="hrsLabel" style="color:#fff">2 hrs</b></label>
+    <input type="range" id="hrs" min="1" max="8" value="2">
+  </div>
+  <label class="mute" for="pickup" style="margin-top:14px">Pickup location</label>
+  <input type="text" id="pickup" value="123 Main St">
+  <textarea id="notes" rows="3" placeholder="Notes for driver / helper"></textarea>
+  <p class="mute" style="margin-top:12px">No surge pricing · Pay by cash</p>
+  <button class="btn" onclick="findHelper()">Proceed</button>
+  <p class="mute" style="text-align:center;margin-top:10px" id="bkSummary"></p>
+</section>
+
+<!-- 5. Helper profile -->
+<section class="screen center" id="helper">
+  <div class="avatar" id="hAvatar">R</div>
+  <h2 id="hName" style="margin:0">Helper</h2>
+  <p class="mute">Verified helper</p>
+  <div style="width:100%">
+    <div class="row"><span>Rating</span><b id="hRating"></b></div>
+    <div class="row"><span>Experience</span><b id="hExp"></b></div>
+    <div class="row"><span>Distance</span><b id="hDist"></b></div>
+    <div class="row"><span>Contact</span><b id="hMail"></b></div>
+  </div>
+  <button class="btn" onclick="confirmBooking()">Confirm booking</button>
+  <button class="btn alt" onclick="show('services')">Choose again</button>
+</section>
+
+<!-- 6. Booking confirmed -->
+<section class="screen center" id="confirmed">
+  <svg width="110" height="110" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="44" fill="none" stroke="#4640ee" stroke-width="5"/><path d="M30 52l14 14 28-30" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <h1>Booking confirmed</h1>
+  <div class="avatar" id="cAvatar">R</div>
+  <p class="mute" id="cText"></p>
+  <button class="btn" onclick="startTracking()">OK</button>
+</section>
+
+<!-- 7. Live tracking -->
+<section class="screen" id="tracking" style="padding:16px">
+  <h2 style="margin:0">Live tracking</h2>
+  <div id="map" role="img" aria-label="Map showing helper approaching"></div>
+  <h2 id="eta" style="margin:0 0 4px">Arriving in 2 min</h2>
+  <p class="mute" id="vehicle">ABC 1234 · Blue Honda Civic</p>
+  <p style="margin:8px 0 12px" id="tripFare"></p>
+  <div class="actions">
+    <button class="sos" onclick="sendAlert()" aria-label="Send emergency alert">⚠</button>
+    <button onclick="shareTrip()">Share trip</button>
+    <button onclick="verifyOTP()">Verify OTP</button>
+  </div>
+  <div class="actions" style="margin-top:8px">
+    <button onclick="show('chat')">Message helper</button>
+    <button onclick="show('cancel')">Cancel</button>
+    <button onclick="completeTrip()">End trip</button>
+  </div>
+</section>
+
+<!-- 8. Message -->
+<section class="screen" id="chat">
+  <h2 id="chatName">Helper</h2>
+  <div id="chatLog" style="flex:1"></div>
+  <input type="text" id="chatIn" placeholder="Type a message">
+  <button class="btn" onclick="sendMsg()">Send</button>
+  <button class="btn alt" onclick="show('tracking');mapFix()">Back to trip</button>
+</section>
+
+<!-- 9. Cancel -->
+<section class="screen" id="cancel">
+  <h2>Cancel booking</h2>
+  <label class="radio"><input type="radio" name="c" value="late"> Helper is late</label>
+  <label class="radio"><input type="radio" name="c" value="dup"> Duplicate request</label>
+  <label class="radio"><input type="radio" name="c" value="plans"> Plans have changed</label>
+  <label class="radio"><input type="radio" name="c" value="other"> Other</label>
+  <p class="mute">A helper has already been assigned. A cancellation fee may apply.</p>
+  <button class="btn" style="background:var(--danger)" onclick="cancelBooking()">Cancel booking</button>
+  <button class="btn alt" onclick="show('tracking');mapFix()">Keep booking</button>
+</section>
+
+<!-- 10. Rate -->
+<section class="screen center" id="rate">
+  <h2>Rate your helper</h2>
+  <div class="stars" id="stars"></div>
+  <div class="chips" id="chips">
+    <button class="chip">Polite</button><button class="chip">Helpful</button><button class="chip">Efficient</button>
+  </div>
+  <textarea id="fb" rows="3" placeholder="Additional feedback"></textarea>
+  <button class="btn" onclick="submitRating()">Submit</button>
+</section>
+
+<!-- 11. Trips -->
+<section class="screen" id="trips">
+  <h2>Your trips</h2>
+  <div id="tripList"></div>
+  <button class="btn" onclick="show('services')">Book another</button>
+</section>
+
+<div id="toast" role="status"></div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+/* ---------- Data ---------- */
+const SERVICES = {
+  premium:{name:"Ride Premium",fare:299,timed:false},
+  porter:{name:"Porter",fare:99,timed:false},
+  ride:{name:"Ride",fare:149,timed:false},
+  ondemand:{name:"On-Demand",perMin:5,timed:true}
+};
+// Demo helper pool near the user (distance in km, eta in min)
+const HELPERS = [
+  {name:"Rachel Brown",gender:"Female",rating:4.9,exp:"5 years",email:"rachel@email.com",dist:1.2,available:true},
+  {name:"Erica Diaz",gender:"Female",rating:4.8,exp:"3 years",email:"erica@email.com",dist:3.1,available:false,nextIn:12},
+  {name:"Alex Carter",gender:"Male",rating:4.9,exp:"4 years",email:"alex@example.com",dist:2.3,available:true},
+  {name:"Daniel Lee",gender:"Male",rating:4.7,exp:"6 years",email:"daniel@email.com",dist:1.8,available:true}
+];
+const state = {svc:null,gender:null,helper:null,fare:0,minutes:0,rating:0,tags:new Set(),otp:null};
+const trips = [];
+const $ = id => document.getElementById(id);
+
+/* ---------- Navigation & helpers ---------- */
+function show(id){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.toggle("on",s.id===id));
+  if(id==="booking") renderBooking();
+  if(id==="trips") renderTrips();
+  if(id==="rate") renderStars();
+}
+function toast(msg){const t=$("toast");t.textContent=msg;t.style.display="block";clearTimeout(t._h);t._h=setTimeout(()=>t.style.display="none",2800);}
+const initial = n => n.split(" ").map(w=>w[0]).join("");
+
+/* ---------- Service select ---------- */
+document.querySelectorAll("[data-svc]").forEach(b=>b.onclick=()=>{
+  state.svc=b.dataset.svc;
+  document.querySelectorAll("[data-svc]").forEach(x=>x.classList.toggle("sel",x===b));
+  $("svcNext").disabled=false;
+});
+
+/* ---------- Gender preference matching + availability prediction ---------- */
+function predictFemale(){
+  // Probability model: density of nearby female helpers, current online status,
+  // and a historical-availability weight (swap in real logs later).
+  const females = HELPERS.filter(h=>h.gender==="Female");
+  const online = females.filter(h=>h.available).length;
+  if(online) return {chance:100,minutes:Math.round(Math.min(...females.filter(h=>h.available).map(h=>h.dist))*4)};
+  const density = Math.min(females.length/4,1);
+  const historical = 0.55;
+  const chance = Math.round((density*0.4+historical*0.6)*100);
+  const minutes = Math.min(...females.map(h=>h.nextIn||99));
+  return {chance,minutes};
+}
+document.querySelectorAll("input[name=g]").forEach(r=>r.onchange=()=>{
+  state.gender=r.value; $("gNext").disabled=false;
+  const p=$("prediction");
+  if(r.value==="Female"){
+    const f=predictFemale();
+    p.textContent=f.chance===100
+      ? `A female helper is available now, about ${f.minutes} min away.`
+      : `${f.chance}% chance of a female helper available in ${f.minutes} minutes.`;
+  } else p.textContent = r.value==="Male" ? "Male helpers are available nearby." : "Fastest available helper will be assigned.";
+});
+
+/* ---------- Booking details & fare ---------- */
+function calcFare(){
+  const s=SERVICES[state.svc];
+  if(s.timed){state.minutes=$("hrs").value*60;return s.perMin*state.minutes;}
+  state.minutes=0;return s.fare;
+}
+function renderBooking(){
+  const s=SERVICES[state.svc];
+  $("bkName").textContent=s.name;
+  $("timeBox").style.display=s.timed?"block":"none";
+  state.fare=calcFare();
+  $("bkFare").textContent="₹"+state.fare;
+  $("bkSummary").textContent=`You selected: ${s.name} (₹${state.fare})`;
+}
+$("hrs").oninput=()=>{$("hrsLabel").textContent=$("hrs").value+(+$("hrs").value===1?" hr":" hrs");renderBooking();};
+
+/* ---------- Matching ---------- */
+function findHelper(){
+  const pool=HELPERS.filter(h=>h.available&&(state.gender==="Any"||h.gender===state.gender)).sort((a,b)=>a.dist-b.dist);
+  if(!pool.length){
+    const f=state.gender==="Female"?predictFemale():null;
+    toast(f?`No female helper free right now. Expected in ${f.minutes} min (${f.chance}% chance).`:"No helper available. Try No preference.");
+    return;
+  }
+  const h=state.helper=pool[0];
+  $("hAvatar").textContent=initial(h.name);
+  $("hName").textContent=h.name;
+  $("hRating").textContent=h.rating+" ★";
+  $("hExp").textContent=h.exp;
+  $("hDist").textContent=h.dist+" km away";
+  $("hMail").textContent=h.email;
+  show("helper");
+}
+function confirmBooking(){
+  state.otp=String(1000+Math.floor(Math.random()*9000));
+  $("cAvatar").textContent=initial(state.helper.name);
+  $("cText").textContent=`${state.helper.name} is on the way. Your OTP is ${state.otp}. Share it only when your helper arrives.`;
+  show("confirmed");
+}
+
+/* ---------- Live tracking (Leaflet) ---------- */
+let map,carMarker,userMarker,timer;
+const USER=[17.3457,78.5522]; // L B Nagar, Hyderabad – change to any coordinates
+function startTracking(){
+  show("tracking");
+  $("vehicle").textContent=`${state.helper.name} · ABC 1234 · Blue Honda Civic`;
+  $("tripFare").textContent=`Fare ₹${state.fare} · Cash`;
+  if(!map){
+    map=L.map("map",{zoomControl:false}).setView(USER,15);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{attribution:"© OpenStreetMap"}).addTo(map);
+    userMarker=L.circleMarker(USER,{radius:9,color:"#4640ee",fillOpacity:1}).addTo(map).bindTooltip("You");
+    carMarker=L.marker([USER[0]+0.012,USER[1]-0.012]).addTo(map).bindTooltip("Helper");
+  }
+  mapFix();
+  let step=0,total=24;
+  const from=[USER[0]+0.012,USER[1]-0.012];
+  clearInterval(timer);
+  timer=setInterval(()=>{
+    step++;
+    const k=step/total;
+    carMarker.setLatLng([from[0]+(USER[0]-from[0])*k,from[1]+(USER[1]-from[1])*k]);
+    const left=Math.max(0,Math.ceil((total-step)/12));
+    $("eta").textContent=step>=total?"Your helper has arrived":`Arriving in ${left||1} min`;
+    if(step>=total)clearInterval(timer);
+  },1000);
+}
+function mapFix(){setTimeout(()=>map&&map.invalidateSize(),50);}
+
+/* ---------- Safety actions ---------- */
+function sendAlert(){
+  const body=JSON.stringify({helper:state.helper.name,location:USER,time:new Date().toISOString()});
+  // Replace with: fetch("/api/send-alert/",{method:"POST",headers:{"Content-Type":"application/json"},body})
+  console.log("ALERT payload",body);
+  toast("Emergency alert sent with your live location to your trusted contacts.");
+}
+function shareTrip(){
+  const text=`I'm on a SheCab trip with ${state.helper.name}. Track me: https://maps.google.com/?q=${USER[0]},${USER[1]}`;
+  if(navigator.share)navigator.share({title:"My SheCab trip",text}).catch(()=>{});
+  else if(navigator.clipboard){navigator.clipboard.writeText(text);toast("Trip link copied.");}
+  else toast("Sharing isn't supported on this browser.");
+}
+function verifyOTP(){
+  const v=prompt("Enter the 4-digit OTP shown to you at booking:");
+  if(v===null)return;
+  toast(v===state.otp?"OTP verified. Ride started.":"That OTP doesn't match. Check the code and try again.");
+}
+
+/* ---------- Chat ---------- */
+function openChatName(){ $("chatName").textContent=state.helper?state.helper.name:"Helper"; }
+const origShow=show; show=function(id){ if(id==="chat"){openChatName();$("chatLog").innerHTML='<div class="bubble" style="display:inline-block;text-align:left">I\'m on my way</div>';} origShow(id); };
+function sendMsg(){
+  const v=$("chatIn").value.trim(); if(!v)return;
+  const d=document.createElement("div");d.className="chip";d.style.cssText="display:block;margin:8px 0 0 auto;width:fit-content";d.textContent=v;
+  $("chatLog").appendChild(d);$("chatIn").value="";
+}
+
+/* ---------- Cancel / complete ---------- */
+function cancelBooking(){
+  if(!document.querySelector("input[name=c]:checked")){toast("Choose a reason to cancel.");return;}
+  clearInterval(timer);toast("Booking cancelled.");show("services");
+}
+function completeTrip(){clearInterval(timer);show("rate");}
+
+/* ---------- Rating & trips ---------- */
+function renderStars(){
+  const box=$("stars");box.innerHTML="";
+  for(let i=1;i<=5;i++){
+    const b=document.createElement("button");b.textContent="★";b.setAttribute("aria-label",i+" star");
+    b.className=i<=state.rating?"on":"";
+    b.onclick=()=>{state.rating=i;renderStars();};
+    box.appendChild(b);
+  }
+}
+document.querySelectorAll("#chips .chip").forEach(c=>c.onclick=()=>{
+  c.classList.toggle("on");
+  c.classList.contains("on")?state.tags.add(c.textContent):state.tags.delete(c.textContent);
+});
+function submitRating(){
+  if(!state.rating){toast("Tap a star to rate your helper.");return;}
+  trips.unshift({name:state.helper.name,total:state.fare,rating:state.rating,tags:[...state.tags],feedback:$("fb").value});
+  state.rating=0;state.tags.clear();$("fb").value="";
+  document.querySelectorAll("#chips .chip").forEach(c=>c.classList.remove("on"));
+  show("trips");
+}
+function renderTrips(){
+  $("tripList").innerHTML=trips.length?trips.map(t=>`
+    <div class="row" style="align-items:center"><div><span class="mute">Completed</span><br><b>${t.name}</b></div>
+    <div style="text-align:right"><span class="mute">Total</span><br><b>₹${t.total}</b></div></div>`).join("")
+    :'<p class="mute">No trips yet. Book your first ride to see it here.</p>';
+}
+</script>
+</body>
+</html>

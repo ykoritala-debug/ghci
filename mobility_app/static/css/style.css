@@ -1,0 +1,80 @@
+/* styles.css */
+
+/* 1. Animation Keyframes */
+@keyframes float-slow {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-15px); }
+}
+
+@keyframes shine {
+    100% { transform: translateX(100%); }
+}
+
+/* 2. Utility Classes */
+
+.hero-gradient {
+    background: radial-gradient(circle at 50% 0%, #F1F5F9 0%, #F8FAFC 100%);
+}
+
+.float-slow {
+    animation: float-slow 6s ease-in-out infinite;
+}
+
+.animate-shine {
+    animation: shine 1.5s;
+}
+
+/* 3. Glass Panel (Stronger Shadow & Border for Visibility) */
+.glass-panel {
+    background: rgba(255, 255, 255, 0.85); /* Increased opacity */
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 1); /* White border */
+    /* Deep shadow to separate from white background */
+    box-shadow: 
+        0 4px 6px -1px rgba(0, 0, 0, 0.1), 
+        0 20px 25px -5px rgba(0, 0, 0, 0.1),
+        0 0 0 1px rgba(0,0,0,0.05); 
+    border-radius: 1.5rem;
+}
+
+/* 4. Scroll Reveal Logic */
+.reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: all 0.8s ease-out;
+}
+
+.reveal.active {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* 5. Delays for staggered animations */
+.delay-100 { transition-delay: 0.1s; }
+.delay-200 { transition-delay: 0.2s; }
+.delay-300 { transition-delay: 0.3s; }
+
+/* 6. Navbar Link Hover Effect */
+.nav-link::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 2px;
+    bottom: -4px;
+    left: 0;
+    background-color: #6366F1; 
+    transition: width 0.3s ease-in-out;
+}
+
+.nav-link:hover::after {
+    width: 100%;
+}
+
+/* 7. Blob Animation delay classes */
+.animation-delay-2000 {
+    animation-delay: 2s;
+}
+.animation-delay-4000 {
+    animation-delay: 4s;
+}
